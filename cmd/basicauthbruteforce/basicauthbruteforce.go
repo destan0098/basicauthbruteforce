@@ -93,9 +93,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	Useragent := BasicAuthBruteForce.Useragent(randomagent)
-	fmt.Println(Useragent)
-
 	usernamedic, err := os.OpenFile(username, os.O_RDONLY, 0600)
 	errorpars(err)
 	defer func(usernamedic *os.File) {
@@ -121,11 +118,13 @@ func main() {
 		user string
 		pass string
 	}, len(linesuser)*len(linespassw))
+	//var j int
 
 	// Create worker goroutines
 	for i := 0; i < rate; i++ {
+
 		wg.Add(1)
-		go workerRoutine(jobs, results, Useragent, &wg)
+		go workerRoutine(jobs, results, &wg)
 	}
 
 	// Add jobs to the queue
@@ -150,18 +149,26 @@ func main() {
 	fmt.Printf("page took %s", elapsed)
 }
 
-func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string }, agent string, wg *sync.WaitGroup) {
+var j int
+var Useragent string
+
+func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string }, wg *sync.WaitGroup) {
 	defer wg.Done()
 	client := BasicAuthBruteForce.NewClient()
 
 	for job := range jobs {
+		j++
+		//	fmt.Println(j)
+		if j == 10 {
+			Useragent = BasicAuthBruteForce.Useragent(randomagent)
+			fmt.Println(Useragent)
+			j = 0
+		}
 		userpass := strings.Split(job, ":")
 		user, pass := userpass[0], userpass[1]
-		err := client.SetHeader(url, agent, user, pass)
+		err := client.SetHeader(url, Useragent, user, pass)
 		if err {
 			results <- struct{ user, pass string }{user, pass}
-		} else {
-			fmt.Println("False")
 		}
 		if delay != 0 {
 			time.Sleep(time.Duration(delay) * time.Second)
