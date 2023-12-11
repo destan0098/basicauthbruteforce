@@ -161,7 +161,7 @@ func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string 
 		//	fmt.Println(j)
 		if j == 10 {
 			Useragent = BasicAuthBruteForce.Useragent(randomagent)
-			fmt.Println(Useragent)
+			fmt.Printf(color.Colorize(color.Green, "-*- User Agent Changed to: \n %s -*- \n"), Useragent)
 			j = 0
 		}
 		userpass := strings.Split(job, ":")
