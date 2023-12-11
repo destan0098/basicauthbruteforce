@@ -45,6 +45,7 @@ GLOBAL OPTIONS:
    --password value, -p value  Enter Password Wordlist
    --rate value, -r value      rate limit (default: 1)
    --random-agent, -a          Random Agent (default: false)
+   --delay, -e                 Delay between request , default 0 , if use best rate =1 
    --help, -h                  show help
 BasicAuth
 
