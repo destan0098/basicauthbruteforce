@@ -144,6 +144,7 @@ func main() {
 	// Process results
 	for res := range results {
 		fmt.Printf(color.Colorize(color.Green, "[+] Find Username: %s And Password : %s\n"), res.user, res.pass)
+		os.Exit(1)
 	}
 	elapsed := time.Since(start)
 	fmt.Printf("page took %s", elapsed)
