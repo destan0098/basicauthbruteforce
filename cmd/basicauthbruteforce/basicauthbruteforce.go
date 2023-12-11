@@ -144,10 +144,11 @@ func main() {
 	// Process results
 	for res := range results {
 		fmt.Printf(color.Colorize(color.Red, "[+] Find Username: %s And Password : %s\n"), res.user, res.pass)
+		elapsed := time.Since(start)
+		fmt.Printf("page took %s", elapsed)
 		os.Exit(1)
 	}
-	elapsed := time.Since(start)
-	fmt.Printf("page took %s", elapsed)
+	
 }
 
 var j int
