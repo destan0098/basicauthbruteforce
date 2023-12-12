@@ -3,9 +3,9 @@
 package main
 
 import (
-	"BasicAuthBruteForce/pkg"
 	"fmt"
 	"github.com/TwiN/go-color"
+	BasicAuthBruteForce "github.com/destan0098/basicauthbruteforce/pkg"
 	"github.com/urfave/cli/v2"
 	"io/ioutil"
 	"log"
@@ -20,7 +20,8 @@ import (
 // Global variables for command-line flags and other settings
 var rate int
 var randomagent, randomdelay bool
-var url, username, password string
+var url, username, password, combolist string
+
 var start time.Time
 var delay int
 
@@ -33,6 +34,10 @@ func errorpars(err error) {
 
 // main function
 func main() {
+	var results = make(chan struct {
+		user string
+		pass string
+	}, 1)
 	start = time.Now()
 	runtime.GOMAXPROCS(1)
 	// Command-line interface setup using urfave/cli
@@ -60,6 +65,13 @@ func main() {
 				Aliases:     []string{"p"},
 				Destination: &password,
 				Usage:       "Enter Password Wordlist",
+			},
+			&cli.StringFlag{
+				Name:        "combolist",
+				Value:       "",
+				Aliases:     []string{"c"},
+				Destination: &combolist,
+				Usage:       "Enter Combo Wordlist",
 			},
 			&cli.IntFlag{
 				Name:        "rate",
@@ -95,12 +107,12 @@ func main() {
 			switch {
 			case cCtx.String("url") == "":
 				fmt.Println(color.Colorize(color.Red, "[-] Please Enter URL with -d"))
-			case cCtx.String("username") == "":
+			case cCtx.String("username") == "" && cCtx.String("combolist") == "":
 				fmt.Println(color.Colorize(color.Red, "[-] Please Enter Username Wordlist Address with -u"))
-			case cCtx.String("username") == "":
-				fmt.Println(color.Colorize(color.Red, "[-] Please Enter Username Wordlist Address with -u"))
+			case cCtx.String("password") == "" && cCtx.String("combolist") == "":
+				fmt.Println(color.Colorize(color.Red, "[-] Please Enter Password Wordlist Address with -u"))
 			case cCtx.Bool("random-agent") == true:
-				fmt.Println(color.Colorize(color.Green, "[-] We Set Random User Agent For you"))
+				fmt.Println(color.Colorize(color.Green, "[*] We Set Random User Agent For you"))
 			}
 			return nil
 		},
@@ -109,51 +121,86 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
-	// Open username and password wordlist files
-	usernamedic, err := os.OpenFile(username, os.O_RDONLY, 0600)
-	errorpars(err)
-	defer func(usernamedic *os.File) {
-		err := usernamedic.Close()
-		errorpars(err)
-	}(usernamedic)
-
-	passwordsdic, err := os.OpenFile(password, os.O_RDONLY, 0600)
-	errorpars(err)
-	defer func(passwordsdic *os.File) {
-		err := passwordsdic.Close()
-		errorpars(err)
-	}(passwordsdic)
-	// Read content of wordlist files
-	usernamedicbyte, err := ioutil.ReadAll(usernamedic)
-	passwordsdicbyte, err := ioutil.ReadAll(passwordsdic)
-	linesuser := strings.Split(string(usernamedicbyte), "\r\n")
-	linespassw := strings.Split(string(passwordsdicbyte), "\n")
-
 	var wg sync.WaitGroup
-	jobs := make(chan string, len(linesuser)*len(linespassw))
-	results := make(chan struct {
-		user string
-		pass string
-	}, len(linesuser)*len(linespassw))
-	// Check for conflicting options regarding delay
-	if delay != 0 && randomdelay {
-		log.Println(color.Colorize(color.Red, "[-] Choose one --delay or --random-delay"))
-		os.Exit(1)
-	}
-	// Create worker goroutines
-	for i := 0; i < rate; i++ {
+	// Open username and password wordlist files
+	if combolist == "" {
 
-		wg.Add(1)
-		go workerRoutine(jobs, results, &wg)
-	}
+		usernamedic, err := os.OpenFile(username, os.O_RDONLY, 0600)
+		errorpars(err)
+		defer func(usernamedic *os.File) {
+			err := usernamedic.Close()
+			errorpars(err)
+		}(usernamedic)
 
-	// Add jobs to the queue
-	for _, usern := range linesuser {
-		for _, passw := range linespassw {
-			jobs <- fmt.Sprintf("%s:%s", usern, passw)
+		passwordsdic, err := os.OpenFile(password, os.O_RDONLY, 0600)
+		errorpars(err)
+		defer func(passwordsdic *os.File) {
+			err := passwordsdic.Close()
+			errorpars(err)
+		}(passwordsdic)
+		// Read content of wordlist files
+		usernamedicbyte, err := ioutil.ReadAll(usernamedic)
+		passwordsdicbyte, err := ioutil.ReadAll(passwordsdic)
+		linesuser := strings.Split(string(usernamedicbyte), "\r\n")
+		linespassw := strings.Split(string(passwordsdicbyte), "\n")
+
+		jobs := make(chan string, len(linesuser)*len(linespassw))
+
+		// Check for conflicting options regarding delay
+		if delay != 0 && randomdelay {
+			log.Println(color.Colorize(color.Red, "[-] Choose one --delay or --random-delay"))
+			os.Exit(1)
 		}
+		// Create worker goroutines
+		for i := 0; i < rate; i++ {
+
+			wg.Add(1)
+			go workerRoutine(jobs, results, &wg)
+		}
+
+		// Add jobs to the queue
+		for _, usern := range linesuser {
+			for _, passw := range linespassw {
+				jobs <- fmt.Sprintf("%s:%s", usern, passw)
+			}
+		}
+		close(jobs)
+	} else {
+
+		combodic, err := os.OpenFile(combolist, os.O_RDONLY, 0600)
+		errorpars(err)
+		defer func(combodic *os.File) {
+			err := combodic.Close()
+			errorpars(err)
+		}(combodic)
+
+		// Read content of wordlist files
+		combodicbyte, err := ioutil.ReadAll(combodic)
+
+		linescombo := strings.Split(string(combodicbyte), "\r\n")
+
+		jobs := make(chan string, len(linescombo))
+
+		// Check for conflicting options regarding delay
+		if delay != 0 && randomdelay {
+			log.Println(color.Colorize(color.Red, "[-] Choose one --delay or --random-delay"))
+			os.Exit(1)
+		}
+		// Create worker goroutines
+		for i := 0; i < rate; i++ {
+
+			wg.Add(1)
+			go workerRoutine(jobs, results, &wg)
+		}
+
+		// Add jobs to the queue
+		for _, usern := range linescombo {
+
+			jobs <- fmt.Sprintf("%s", usern)
+
+		}
+		close(jobs)
 	}
-	close(jobs)
 
 	// Wait for all workers to finish
 	go func() {
@@ -196,7 +243,9 @@ func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string 
 		err := client.SetHeader(url, Useragent, user, pass)
 		// If the error is true, it means authentication was successful
 		if err {
+
 			results <- struct{ user, pass string }{user, pass}
+
 		}
 		//check if delay set sleep with delay input
 		if delay != 0 {
