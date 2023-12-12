@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"runtime"
 	"strings"
@@ -17,7 +18,7 @@ import (
 )
 
 var rate int
-var randomagent bool
+var randomagent, randomdelay bool
 var url, username, password string
 var start time.Time
 var delay int
@@ -75,6 +76,13 @@ func main() {
 				Usage:       "Random Agent",
 				Destination: &randomagent,
 			},
+			&cli.BoolFlag{
+				Name:        "random-delay",
+				Aliases:     []string{"y"},
+				Value:       false,
+				Usage:       "Random Delay",
+				Destination: &randomdelay,
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
 			switch {
@@ -85,7 +93,7 @@ func main() {
 			case cCtx.String("username") == "":
 				fmt.Println(color.Colorize(color.Red, "[-] Please Enter Username Wordlist Address with -u"))
 			case cCtx.Bool("random-agent") == true:
-				fmt.Println(color.Colorize(color.Green, "[-] We Set Random User Agent "))
+				fmt.Println(color.Colorize(color.Green, "[-] We Set Random User Agent For you"))
 			}
 			return nil
 		},
@@ -121,7 +129,10 @@ func main() {
 		pass string
 	}, len(linesuser)*len(linespassw))
 	//var j int
-
+	if delay != 0 && randomdelay {
+		log.Println(color.Colorize(color.Red, "[-] Choose one --delay or --random-delay"))
+		os.Exit(1)
+	}
 	// Create worker goroutines
 	for i := 0; i < rate; i++ {
 
@@ -164,6 +175,7 @@ func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string 
 		j++
 		//	fmt.Println(j)
 		if j == 10 {
+			//make user agent
 			Useragent = BasicAuthBruteForce.Useragent(randomagent)
 			//	fmt.Printf(color.Colorize(color.Green, "-*- User Agent Changed to: \n %s -*- \n"), Useragent)
 			j = 0
@@ -174,8 +186,19 @@ func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string 
 		if err {
 			results <- struct{ user, pass string }{user, pass}
 		}
+		//check if delay set sleep with delay input
 		if delay != 0 {
+
 			time.Sleep(time.Duration(delay) * time.Second)
+		}
+		//check if random delay set make random number and sleep
+		if randomdelay {
+
+			rand.Seed(time.Now().UnixNano())
+			randomNumber := rand.Intn(10) + 1
+
+			time.Sleep(time.Duration(randomNumber) * time.Second)
+
 		}
 
 	}
