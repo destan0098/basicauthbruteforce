@@ -3,9 +3,9 @@
 package main
 
 import (
+	"BasicAuthBruteForce/pkg"
 	"fmt"
 	"github.com/TwiN/go-color"
-	BasicAuthBruteForce "github.com/destan0098/basicauthbruteforce/pkg"
 	"github.com/urfave/cli/v2"
 	"io/ioutil"
 	"log"
@@ -82,8 +82,10 @@ func main() {
 				fmt.Println(color.Colorize(color.Red, "[-] Please Enter URL with -d"))
 			case cCtx.String("username") == "":
 				fmt.Println(color.Colorize(color.Red, "[-] Please Enter Username Wordlist Address with -u"))
-			case cCtx.String("password") == "":
-				fmt.Println(color.Colorize(color.Red, "[-] Please Enter Password Wordlist Address with -p"))
+			case cCtx.String("username") == "":
+				fmt.Println(color.Colorize(color.Red, "[-] Please Enter Username Wordlist Address with -u"))
+			case cCtx.Bool("random-agent") == true:
+				fmt.Println(color.Colorize(color.Green, "[-] We Set Random User Agent "))
 			}
 			return nil
 		},
@@ -148,7 +150,7 @@ func main() {
 		fmt.Printf("page took %s \n", elapsed)
 		os.Exit(1)
 	}
-	
+
 }
 
 var j int
@@ -163,7 +165,7 @@ func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string 
 		//	fmt.Println(j)
 		if j == 10 {
 			Useragent = BasicAuthBruteForce.Useragent(randomagent)
-			fmt.Printf(color.Colorize(color.Green, "-*- User Agent Changed to: \n %s -*- \n"), Useragent)
+			//	fmt.Printf(color.Colorize(color.Green, "-*- User Agent Changed to: \n %s -*- \n"), Useragent)
 			j = 0
 		}
 		userpass := strings.Split(job, ":")
