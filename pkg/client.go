@@ -56,7 +56,6 @@ func (c *Client) SetHeader(siteurl, agent, user, pass string) bool {
 			break
 		} else {
 
-			fmt.Println(err.Error(), i)
 			err = nil
 		}
 	}
@@ -68,6 +67,7 @@ func (c *Client) SetHeader(siteurl, agent, user, pass string) bool {
 	}()
 
 	if response.StatusCode == http.StatusOK {
+
 		return true
 
 	} else if response.StatusCode == http.StatusUnauthorized {

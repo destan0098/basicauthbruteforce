@@ -3,11 +3,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/TwiN/go-color"
 	BasicAuthBruteForce "github.com/destan0098/basicauthbruteforce/pkg"
 	"github.com/urfave/cli/v2"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -124,7 +124,6 @@ func main() {
 	var wg sync.WaitGroup
 	// Open username and password wordlist files
 	if combolist == "" {
-
 		usernamedic, err := os.OpenFile(username, os.O_RDONLY, 0600)
 		errorpars(err)
 		defer func(usernamedic *os.File) {
@@ -138,11 +137,28 @@ func main() {
 			err := passwordsdic.Close()
 			errorpars(err)
 		}(passwordsdic)
+
+		linesuser := make([]string, 0)
+		linespassw := make([]string, 0)
+
+		done := make(chan struct{})
+
+		// Use bufio.Scanner for reading files
+		processFile := func(file *os.File, lines *[]string) {
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				*lines = append(*lines, scanner.Text())
+			}
+			done <- struct{}{}
+		}
+
 		// Read content of wordlist files
-		usernamedicbyte, err := ioutil.ReadAll(usernamedic)
-		passwordsdicbyte, err := ioutil.ReadAll(passwordsdic)
-		linesuser := strings.Split(string(usernamedicbyte), "\r\n")
-		linespassw := strings.Split(string(passwordsdicbyte), "\n")
+		go processFile(usernamedic, &linesuser)
+		go processFile(passwordsdic, &linespassw)
+
+		// Wait for both files to finish reading
+		<-done
+		<-done
 
 		jobs := make(chan string, len(linesuser)*len(linespassw))
 
@@ -151,9 +167,9 @@ func main() {
 			log.Println(color.Colorize(color.Red, "[-] Choose one --delay or --random-delay"))
 			os.Exit(1)
 		}
+
 		// Create worker goroutines
 		for i := 0; i < rate; i++ {
-
 			wg.Add(1)
 			go workerRoutine(jobs, results, &wg)
 		}
@@ -174,10 +190,24 @@ func main() {
 			errorpars(err)
 		}(combodic)
 
-		// Read content of wordlist files
-		combodicbyte, err := ioutil.ReadAll(combodic)
+		linescombo := make([]string, 0)
 
-		linescombo := strings.Split(string(combodicbyte), "\r\n")
+		done := make(chan struct{})
+
+		// Use bufio.Scanner for reading files
+		processFile := func(file *os.File, lines *[]string) {
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				*lines = append(*lines, scanner.Text())
+			}
+			done <- struct{}{}
+		}
+
+		// Read content of wordlist files
+		go processFile(combodic, &linescombo)
+
+		// Wait for both files to finish reading
+		<-done
 
 		jobs := make(chan string, len(linescombo))
 
@@ -186,19 +216,19 @@ func main() {
 			log.Println(color.Colorize(color.Red, "[-] Choose one --delay or --random-delay"))
 			os.Exit(1)
 		}
+
 		// Create worker goroutines
 		for i := 0; i < rate; i++ {
-
 			wg.Add(1)
 			go workerRoutine(jobs, results, &wg)
 		}
 
 		// Add jobs to the queue
-		for _, usern := range linescombo {
 
-			jobs <- fmt.Sprintf("%s", usern)
-
+		for _, comb := range linescombo {
+			jobs <- fmt.Sprintf("%s", comb)
 		}
+
 		close(jobs)
 	}
 
