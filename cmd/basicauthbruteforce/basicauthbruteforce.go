@@ -121,9 +121,10 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+	const chunkSize = 1000
 	var wg sync.WaitGroup
 	// Open username and password wordlist files
-	if combolist == "" {
+	if combolist == "" && username != "" {
 		usernamedic, err := os.OpenFile(username, os.O_RDONLY, 0600)
 		errorpars(err)
 		defer func(usernamedic *os.File) {
@@ -145,9 +146,17 @@ func main() {
 
 		// Use bufio.Scanner for reading files
 		processFile := func(file *os.File, lines *[]string) {
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				*lines = append(*lines, scanner.Text())
+			for {
+				chunk, err := readInChunks(file, chunkSize)
+				if err != nil {
+					log.Println(err)
+					close(done)
+					return
+				}
+				*lines = append(*lines, chunk...)
+				if len(chunk) < chunkSize {
+					break
+				}
 			}
 			done <- struct{}{}
 		}
@@ -181,7 +190,7 @@ func main() {
 			}
 		}
 		close(jobs)
-	} else {
+	} else if combolist != "" {
 
 		combodic, err := os.OpenFile(combolist, os.O_RDONLY, 0600)
 		errorpars(err)
@@ -249,23 +258,45 @@ func main() {
 }
 
 // Variables for workerRoutine
-var j int
+func readInChunks(file *os.File, chunkSize int) ([]string, error) {
+	var lines []string
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+
+		if len(lines) == chunkSize {
+			return lines, nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return lines, nil
+}
+
 var Useragent string
 
 // workerRoutine function to perform the actual brute-force attacks
 func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string }, wg *sync.WaitGroup) {
-	defer wg.Done()
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf(color.Colorize(color.Red, "[!] Recovered in workerRoutine:"), r)
+		}
+		wg.Done()
+	}()
 	client := BasicAuthBruteForce.NewClient()
 
 	for job := range jobs {
-		j++
+
 		// Change User Agent after every 10 attempts
-		if j == 10 {
-			//make user agent
-			Useragent = BasicAuthBruteForce.Useragent(randomagent)
-			//	fmt.Printf(color.Colorize(color.Green, "-*- User Agent Changed to: \n %s -*- \n"), Useragent)
-			j = 0
-		}
+
+		//make user agent
+		Useragent = BasicAuthBruteForce.Useragent(randomagent)
+		//	fmt.Printf(color.Colorize(color.Green, "-*- User Agent Changed to: \n %s -*- \n"), Useragent)
+
 		// Split the job into username and password
 		userpass := strings.Split(job, ":")
 		user, pass := userpass[0], userpass[1]
