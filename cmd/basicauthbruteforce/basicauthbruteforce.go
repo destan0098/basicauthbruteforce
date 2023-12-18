@@ -81,7 +81,7 @@ func main() {
 			&cli.IntFlag{
 				Name:        "rate",
 				Aliases:     []string{"r"},
-				Value:       1,
+				Value:       50,
 				Usage:       "rate limit",
 				Destination: &rate,
 			},
