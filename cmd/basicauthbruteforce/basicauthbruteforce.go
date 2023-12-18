@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/TwiN/go-color"
+	"github.com/briandowns/spinner"
 	BasicAuthBruteForce "github.com/destan0098/basicauthbruteforce/pkg"
 	"github.com/urfave/cli/v2"
 	"log"
@@ -38,6 +39,9 @@ func main() {
 		user string
 		pass string
 	}, 1)
+	s := spinner.New(spinner.CharSets[36], 100*time.Millisecond)
+	s.Prefix = "Waiting: "
+	s.Start()
 	start = time.Now()
 	runtime.GOMAXPROCS(1)
 	// Command-line interface setup using urfave/cli
@@ -191,6 +195,7 @@ func main() {
 		}
 		close(jobs)
 	} else if combolist != "" {
+
 		combodic, err := os.OpenFile(combolist, os.O_RDONLY, 0600)
 		errorpars(err)
 		defer func(combodic *os.File) {
@@ -256,7 +261,9 @@ func main() {
 
 	// Process results
 	for res := range results {
+		s.Stop()
 		fmt.Printf(color.Colorize(color.Red, "[+] Find Username: %s And Password : %s\n"), res.user, res.pass)
+
 		elapsed := time.Since(start)
 		fmt.Printf("page took %s \n", elapsed)
 		os.Exit(1)
