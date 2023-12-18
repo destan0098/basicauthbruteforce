@@ -191,7 +191,6 @@ func main() {
 		}
 		close(jobs)
 	} else if combolist != "" {
-
 		combodic, err := os.OpenFile(combolist, os.O_RDONLY, 0600)
 		errorpars(err)
 		defer func(combodic *os.File) {
@@ -205,9 +204,17 @@ func main() {
 
 		// Use bufio.Scanner for reading files
 		processFile := func(file *os.File, lines *[]string) {
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				*lines = append(*lines, scanner.Text())
+			for {
+				chunk, err := readInChunks(file, chunkSize)
+				if err != nil {
+					log.Println(err)
+					close(done)
+					return
+				}
+				*lines = append(*lines, chunk...)
+				if len(chunk) < chunkSize {
+					break
+				}
 			}
 			done <- struct{}{}
 		}
