@@ -39,7 +39,7 @@ func main() {
 		user string
 		pass string
 	}, 1)
-	s := spinner.New(spinner.CharSets[36], 100*time.Millisecond)
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 	s.Prefix = "Waiting: "
 	s.Start()
 	start = time.Now()
