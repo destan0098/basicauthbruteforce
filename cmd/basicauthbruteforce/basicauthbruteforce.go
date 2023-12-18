@@ -8,6 +8,7 @@ import (
 	"github.com/TwiN/go-color"
 	"github.com/briandowns/spinner"
 	BasicAuthBruteForce "github.com/destan0098/basicauthbruteforce/pkg"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/urfave/cli/v2"
 	"log"
 	"math/rand"
@@ -125,6 +126,7 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+
 	const chunkSize = 1000
 	var wg sync.WaitGroup
 	// Open username and password wordlist files
@@ -258,11 +260,18 @@ func main() {
 		wg.Wait()
 		close(results)
 	}()
-
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"#", "Username", "Password"})
 	// Process results
 	for res := range results {
 		s.Stop()
-		fmt.Printf(color.Colorize(color.Red, "[+] Find Username: %s And Password : %s\n"), res.user, res.pass)
+		t.AppendRow(table.Row{1, res.user, res.pass})
+		t.AppendSeparator()
+
+		t.Render()
+
+		//	fmt.Printf(color.Colorize(color.Red, "[+] Find Username: %s And Password : %s\n"), res.user, res.pass)
 
 		elapsed := time.Since(start)
 		fmt.Printf("page took %s \n", elapsed)
@@ -338,4 +347,5 @@ func workerRoutine(jobs <-chan string, results chan<- struct{ user, pass string 
 		}
 
 	}
+
 }
