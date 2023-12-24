@@ -262,7 +262,7 @@ func main() {
 	}()
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"#", "Username", "Password"})
+	t.AppendHeader(table.Row{"#", "Usernames", "Password"})
 	// Process results
 	for res := range results {
 		s.Stop()
