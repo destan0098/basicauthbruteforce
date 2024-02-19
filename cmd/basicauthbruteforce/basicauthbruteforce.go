@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-// Global variables for command-line flags and other settings
+// Global variables for command-line flags and other settingsg
 var rate int
 var randomagent, randomdelay bool
 var url, username, password, combolist, proxyAddress string
